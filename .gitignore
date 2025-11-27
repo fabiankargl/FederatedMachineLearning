@@ -1,0 +1,31 @@
+# Python venv
+venv/
+.env/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Build and distribution directories
+build/
+dist/
+*.egg-info/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# VSCode settings
+.vscode/
+
+# Environment files
+*.env
+*.ini
+
+# Flower logs
+log/
+logs/
+
+# PyTorch training artifacts
+*.pth
+*.pt

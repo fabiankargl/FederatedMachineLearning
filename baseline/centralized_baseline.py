@@ -2,7 +2,6 @@ import numpy as np
 import xgboost as xgb
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.ensemble import RandomForestClassifier
@@ -14,9 +13,6 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score 
 from ucimlrepo import fetch_ucirepo
 
-# ==========================================
-# 1. Data Loading and Preprocessing
-# ==========================================
 def get_processed_data():
     print("--- Load Adult Dataset ---")
     adult = fetch_ucirepo(id=2)
@@ -52,10 +48,6 @@ def get_processed_data():
     X_train, X_test, y_train, y_test = train_test_split(X_processed, y_bin, test_size=0.2, random_state=42, stratify=y_bin)
     
     return X_train, X_test, y_train, y_test
-
-# ==========================================
-# 2. Model definition
-# ==========================================
 
 def train_xgboost(X_train, y_train, X_test):
     print("\n--- Train XGBoost ---")
@@ -150,9 +142,6 @@ def train_neural_network(X_train, y_train, X_test):
     
     return preds.cpu().numpy(), probs.cpu().numpy()
 
-# ==========================================
-# 3. Main
-# ==========================================
 if __name__ == "__main__":
     X_train, X_test, y_train, y_test = get_processed_data()
     print(f"Data formats: Train {X_train.shape}, Test {X_test.shape}")
@@ -168,7 +157,7 @@ if __name__ == "__main__":
     }
 
     print("\n===========================================")
-    print("       FINAL BASELINE RESULTS (Task 2.1)   ")
+    print("       FINAL BASELINE RESULTS  ")
     print("===========================================")
 
     for name, (preds, probs) in models.items():

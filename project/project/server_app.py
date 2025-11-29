@@ -8,7 +8,7 @@ from baseline.model_utils import SimpleNN
 app = ServerApp()
 
 class FedAvgBalanced(FedAvg):
-    """FedAvg mit gleichgewichteter Aggregation (Balanced Weight Averaging)"""
+    """FedAvg with equal aggregation (Balanced Weight Averaging)"""
     def aggregate_fit(self, rnd, results, failures):
         if not results:
             return None, {}
@@ -30,27 +30,25 @@ class FedAvgBalanced(FedAvg):
 
 @app.main()
 def main(grid, context: Context):
-    # Input-Dimension als Konfiguration
-    input_dim = context.run_config.get("input_dim", 108)  # z.B. 108 für Adult after one-hot
+    # load config from toml
+    lr = context.run_config.get("lr") or 0.01
+    local_epochs = context.run_config.get("local-epochs") or 1
+    batch_size = context.run_config.get("batch-size") or 64
+    fraction_train = context.run_config.get("fraction-train") or 1.0
+    num_rounds = context.run_config.get("num-server-rounds") or 1
+    input_dim = context.run_config.get("input_dim") or 108
 
-    # Globales Modell initialisieren
+    # init global model
     global_model = SimpleNN(input_dim)
     arrays = ArrayRecord(global_model.state_dict())
+    strategy = FedAvgBalanced(fraction_train=fraction_train)
 
-    # Strategy mit Balanced Aggregation
-    strategy = FedAvgBalanced(
-        fraction_train=context.run_config.get("fraction_train", 1.0)
-    )
-
-    # Trainingskonfiguration aus TOML
+    # trainconfig for clients
     train_config = ConfigRecord({
-        "lr": context.run_config.get("lr", 0.01),
-        "local_epochs": context.run_config.get("local_epochs", 1),
-        "batch_size": context.run_config.get("batch_size", 64)
+        "lr": lr,
+        "local_epochs": local_epochs,
+        "batch_size": batch_size
     })
-
-    # Anzahl Runden aus TOML
-    num_rounds = context.run_config.get("num_server_rounds", 50)
 
     result = strategy.start(
         grid=grid,
@@ -60,4 +58,3 @@ def main(grid, context: Context):
     )
 
     torch.save(result.arrays.to_torch_state_dict(), "final_model_balanced41.pt")
-    print("Final model saved as final_model_balanced41.pt")

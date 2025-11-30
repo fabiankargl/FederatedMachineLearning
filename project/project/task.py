@@ -7,6 +7,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from ucimlrepo import fetch_ucirepo
+from sklearn.metrics import log_loss
 
 def get_processed_data_xgb():
     adult = fetch_ucirepo(id=2)
@@ -34,6 +35,7 @@ def get_processed_data_xgb():
     X_processed = preprocessor.fit_transform(X)
     return train_test_split(X_processed, y_bin, test_size=0.2, random_state=42, stratify=y_bin)
 
+
 def load_tabular_data(X_train, y_train, X_test, y_test, batch_size=32):
     trainloader = DataLoader(
         TensorDataset(torch.tensor(X_train, dtype=torch.float32),
@@ -47,21 +49,29 @@ def load_tabular_data(X_train, y_train, X_test, y_test, batch_size=32):
     )
     return trainloader, testloader
 
-def train_tabular_xgb(model, trainloader, epochs=1):
-    # XGBoost needs numpy arrays
-    X = torch.cat([X for X, _ in trainloader]).numpy()
-    y = torch.cat([y for _, y in trainloader]).numpy()
-    model = xgb.XGBClassifier(objective='binary:logistic', eval_metric='logloss',
-                              n_estimators=100, learning_rate=0.05, max_depth=6)
-    model.fit(X, y)
-    return model
 
-def test_tabular_xgb(model, testloader):
-    X = torch.cat([X for X, _ in testloader]).numpy()
-    y = torch.cat([y for _, y in testloader]).numpy()
-    y_pred = model.predict(X)
-    acc = (y_pred == y).mean()
-    # simple logloss
-    from sklearn.metrics import log_loss
-    loss = log_loss(y, model.predict_proba(X))
+def train_tabular_xgb(X_train, y_train, X_test=None, n_estimators=100, learning_rate=0.05, max_depth=6):
+
+    model = xgb.XGBClassifier(
+        objective='binary:logistic',
+        eval_metric='logloss',
+        n_estimators=n_estimators,
+        learning_rate=learning_rate,
+        max_depth=max_depth
+    )
+    model.fit(X_train, y_train)
+
+    if X_test is not None:
+        preds = model.predict(X_test)
+        probs = model.predict_proba(X_test)
+        return preds, probs, model
+    else:
+        return None, None, model
+
+
+def test_tabular_xgb(model, X_test, y_test):
+    preds = model.predict(X_test)
+    probs = model.predict_proba(X_test)
+    acc = (preds == y_test).mean()
+    loss = log_loss(y_test, probs)
     return loss, acc

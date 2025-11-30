@@ -34,13 +34,17 @@ class FedAvgBalancedXGB(FedAvg):
 
 @app.main()
 def main(grid, context: Context):
+    # load config from toml
     num_rounds = context.run_config.get("num-server-rounds") or 1
+    fraction_train = context.run_config.get("fraction-train") or 1.0
 
     initial_array = np.zeros((1,), dtype=np.float32)
     arrays = ArrayRecord([initial_array])
 
     strategy = FedAvgBalancedXGB()
-    train_config = ConfigRecord({})
+    train_config = ConfigRecord({
+        "fraction_train": fraction_train
+    })
 
     result = strategy.start(
         grid=grid,
@@ -51,7 +55,4 @@ def main(grid, context: Context):
 
     if result.arrays and len(result.arrays) > 0:
         arrays_list = list(result.arrays.values())
-        np.save("final_model_balanced_xgb.npy", arrays_list[0])
-        print("Final model saved!")
-    else:
-        print("No arrays found in result.")
+        np.save("final_model_balanced_xgb5.npy", arrays_list[0])

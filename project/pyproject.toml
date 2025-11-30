@@ -39,7 +39,7 @@ clientapp = "project.client_app:app"
 
 # Custom config values accessible via `context.run_config`
 [tool.flwr.app.config]
-num-server-rounds = 50
+num-server-rounds = 5
 fraction-train = 0.25
 local-epochs = 5
 lr = 0.005
@@ -52,7 +52,7 @@ default = "local-simulation"
 
 # Local simulation federation with 10 virtual SuperNodes
 [tool.flwr.federations.local-simulation]
-options.num-supernodes = 41
+options.num-supernodes = 5
 
 # Remote federation example for use with SuperLink
 [tool.flwr.federations.remote-federation]

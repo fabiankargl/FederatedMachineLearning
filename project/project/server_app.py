@@ -2,6 +2,7 @@ import numpy as np
 from flwr.serverapp import ServerApp
 from flwr.app import ArrayRecord, ConfigRecord, Context
 from flwr.serverapp.strategy import FedAvg
+import json
 
 app = ServerApp()
 
@@ -102,4 +103,8 @@ def main(grid, context: Context):
 
     if result.arrays and len(result.arrays) > 0:
         arrays_list = list(result.arrays.values())
-        np.save("final_model_xgb.npy", arrays_list[0])
+        arr_obj = arrays_list[0]
+        arr = arr_obj.numpy()
+        arr_list = arr.tolist()
+        with open("final_model_xgb5.json", "w") as f:
+            json.dump(arr_list, f)

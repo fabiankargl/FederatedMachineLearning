@@ -4,6 +4,8 @@ from flwr.app import Message, Context, ArrayRecord, MetricRecord, RecordDict
 from baseline.model_utils import train_xgboost
 from baseline.data_utils import get_processed_data
 from baseline.data_utils import get_partitioned_data
+from sklearn.metrics import roc_auc_score, f1_score
+
 
 app = ClientApp()
 
@@ -23,19 +25,21 @@ def train(msg: Message, context: Context):
     config = context.run_config
     fraction_train = config.get("fraction_train", 1.0)
 
-    # train local xgboost
-    preds, probs = train_xgboost(X_train, y_train, X_test)
-
     # convert model to numpy array
     updated_model_array = np.random.randn(1).astype(np.float32)
 
-    train_acc = (preds == y_test).mean()
+    train_preds, train_probs = train_xgboost(X_train, y_train, X_train)
+    train_acc = (train_preds == y_train).mean()
+    train_auc = roc_auc_score(y_train, train_probs)
+    train_f1 = f1_score(y_train, train_preds)
+
+
 
     content = RecordDict({
         # contains model weights
         "arrays": ArrayRecord([updated_model_array]),
         # contains metrics
-        "metrics": MetricRecord({"num-examples": len(X_train), "train_acc": train_acc})
+        "metrics": MetricRecord({"num-examples": len(X_train), "train_acc": train_acc, "train_auc": train_auc, "train_f1": train_f1})
     })
     return Message(content=content, reply_to=msg)
 
@@ -51,12 +55,16 @@ def evaluate(msg: Message, context: Context):
         num_partitions=num_partitions,
     )
 
-    preds, probs = train_xgboost(X_train, y_train, X_test)
-    acc = (preds == y_test).mean()
+    eval_preds, eval_probs = train_xgboost(X_train, y_train, X_test)
+    eval_acc = (eval_preds == y_test).mean()
+    eval_auc = roc_auc_score(y_test, eval_probs)
+    eval_f1 = f1_score(y_test, eval_preds)
 
     content = RecordDict({
         "metrics": MetricRecord({
-            "eval_acc": acc,
+            "eval_acc": eval_acc,
+            "eval_auc": eval_auc,
+            "eval_f1": eval_f1,
             "num-examples": len(X_test),
         })
     })

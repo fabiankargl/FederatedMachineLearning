@@ -61,11 +61,11 @@ for i in range(df.shape[0]):
                     fontsize=9, color='#444444')
     texts.append(t)
 
-plt.title('Modell-Comparison', fontsize=16, pad=20, fontweight='bold')
+plt.title('Model-Comparison', fontsize=16, pad=20, fontweight='bold')
 plt.xlabel('AUC Score', fontsize=12)
 plt.ylabel('F1 Score', fontsize=12)
 
-plt.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0, title="Modell-Type")
+plt.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0, title="Model-Type")
 
 ax.grid(True, linestyle=':', alpha=0.7)
 

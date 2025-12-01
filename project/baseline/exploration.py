@@ -29,25 +29,30 @@ sns.countplot(x='income', data=df, hue='income', palette='viridis', legend=False
 plt.title('Distribution of the target variable (income)')
 plt.xlabel('Income bracket')
 plt.ylabel('Number')
+plt.tight_layout()
 plt.show()
 
 plt.figure(figsize=(10, 6))
 sns.histplot(data=df, x='age', hue='income', kde=True, bins=30, palette='coolwarm')
 plt.title('Age distribution by income')
+plt.tight_layout()
 plt.show()
 
 plt.figure(figsize=(8, 6))
 sns.boxplot(x='income', y='hours-per-week', data=df, hue='income', palette='Set2', legend=False)
 plt.title('Working hours per week vs. income')
+plt.tight_layout()
 plt.show()
 
 def plot_categorical_relation(column, df_data, rotation=45):
     plt.figure(figsize=(12, 6))
     order = df_data[column].value_counts().index
     sns.countplot(x=column, hue='income', data=df_data, order=order, palette='Paired')
-    plt.title(f'Influence from "{column}" on the income')
+    plt.title(f'Income distribution by "{column}"')
     plt.xticks(rotation=rotation)
     plt.legend(title='Income', loc='upper right')
+    plt.xlabel(column.replace('-', ' ').capitalize())
+    plt.tight_layout()
     plt.show()
 
 plot_categorical_relation('education', df)
@@ -63,6 +68,7 @@ corr = numeric_df.corr()
 plt.figure(figsize=(10, 8))
 sns.heatmap(corr, annot=True, cmap='coolwarm', fmt=".2f", linewidths=.5)
 plt.title('Correlation matrix of the numerical features')
+plt.tight_layout()
 plt.show()
 
 print("Key insights for your model:")

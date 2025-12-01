@@ -45,6 +45,7 @@ local-epochs = 5
 lr = 0.005
 batch-size = 64
 input_dim = 108
+weighted = true
 
 # Default federation to use when running the app
 [tool.flwr.federations]
@@ -52,7 +53,7 @@ default = "local-simulation"
 
 # Local simulation federation with 10 virtual SuperNodes
 [tool.flwr.federations.local-simulation]
-options.num-supernodes = 5
+options.num-supernodes = 10
 
 # Remote federation example for use with SuperLink
 [tool.flwr.federations.remote-federation]

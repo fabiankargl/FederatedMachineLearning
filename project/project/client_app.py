@@ -3,14 +3,21 @@ from flwr.clientapp import ClientApp
 from flwr.app import Message, Context, ArrayRecord, MetricRecord, RecordDict
 from baseline.model_utils import train_xgboost
 from baseline.data_utils import get_processed_data
+from baseline.data_utils import get_partitioned_data
 
 app = ClientApp()
 
 # train function
 @app.train()
 def train(msg: Message, context: Context):
+    partition_id = int(context.node_config["partition-id"])
+    num_partitions = int(context.node_config["num-partitions"])
+
     # load data
-    X_train, X_test, y_train, y_test = get_processed_data()
+    X_train, X_test, y_train, y_test = get_partitioned_data(
+        partition_id=partition_id,
+        num_partitions=num_partitions,
+    )
 
     # load config
     config = context.run_config
@@ -36,18 +43,21 @@ def train(msg: Message, context: Context):
 # eval function
 @app.evaluate()
 def evaluate(msg: Message, context: Context):
-    # load data
-    X_train, X_test, y_train, y_test = get_processed_data()
+    partition_id = int(context.node_config["partition-id"])
+    num_partitions = int(context.node_config["num-partitions"])
 
-    # eval local xgboost
+    X_train, X_test, y_train, y_test = get_partitioned_data(
+        partition_id=partition_id,
+        num_partitions=num_partitions,
+    )
+
     preds, probs = train_xgboost(X_train, y_train, X_test)
-    # calc accuracy
     acc = (preds == y_test).mean()
 
     content = RecordDict({
         "metrics": MetricRecord({
             "eval_acc": acc,
-            "num-examples": len(X_test)
+            "num-examples": len(X_test),
         })
     })
     return Message(content=content, reply_to=msg)

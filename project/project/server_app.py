@@ -8,7 +8,6 @@ app = ServerApp()
 
 
 class FedAvgBalancedXGB(FedAvg):
-
     def aggregate_fit(self, rnd, results, failures):
         if not results:
             return None, {}
@@ -21,7 +20,6 @@ class FedAvgBalancedXGB(FedAvg):
             for i in range(len(arrays_list[0]))
         ]
 
-        # Aggregate metrics
         metrics_aggregated = {}
         for res, _ in results:
             if res.metrics:
@@ -32,13 +30,12 @@ class FedAvgBalancedXGB(FedAvg):
         averaged_array_record = ArrayRecord(averaged_weights)
         return averaged_array_record, metrics_mean
 
-class FedAvgWeightedXGB(FedAvg):
 
+class FedAvgWeightedXGB(FedAvg):
     def aggregate_fit(self, rnd, results, failures):
         if not results:
             return None, {}
 
-        # Parameter und num-examples einsammeln
         arrays_list = []
         num_examples = []
 
@@ -49,9 +46,8 @@ class FedAvgWeightedXGB(FedAvg):
 
         num_examples = np.array(num_examples, dtype=np.float32)
         total = float(np.sum(num_examples)) if np.sum(num_examples) > 0 else 1.0
-        weights = num_examples / total  # Normalisierte Gewichte
+        weights = num_examples / total
 
-        # Weighted averaging
         averaged_weights = []
         for i in range(len(arrays_list[0])):
             weighted_sum = 0.0
@@ -59,7 +55,6 @@ class FedAvgWeightedXGB(FedAvg):
                 weighted_sum += client_params[i] * weights[client_idx]
             averaged_weights.append(weighted_sum)
 
-        # Aggregierte Metriken (ohne num-examples)
         metrics_aggregated = {}
         for res, _ in results:
             if res.metrics:
@@ -72,17 +67,16 @@ class FedAvgWeightedXGB(FedAvg):
         averaged_array_record = ArrayRecord(averaged_weights)
         return averaged_array_record, metrics_mean
 
+
 @app.main()
 def main(grid, context: Context):
     num_rounds = context.run_config.get("num-server-rounds") or 1
     fraction_train = context.run_config.get("fraction-train") or 1.0
-
     use_weighted = bool(context.run_config.get("weighted", False))
 
     initial_array = np.zeros((1,), dtype=np.float32)
     arrays = ArrayRecord([initial_array])
 
-    # Strategie wählen
     if use_weighted:
         print(">> Using WEIGHTED FedAvg (XGB)")
         strategy = FedAvgWeightedXGB()
@@ -90,9 +84,7 @@ def main(grid, context: Context):
         print(">> Using BALANCED (equal) FedAvg (XGB)")
         strategy = FedAvgBalancedXGB()
 
-    train_config = ConfigRecord({
-        "fraction_train": fraction_train
-    })
+    train_config = ConfigRecord({"fraction_train": fraction_train})
 
     result = strategy.start(
         grid=grid,
@@ -101,10 +93,11 @@ def main(grid, context: Context):
         num_rounds=num_rounds
     )
 
+    # Optional: global ensemble am Ende
     if result.arrays and len(result.arrays) > 0:
         arrays_list = list(result.arrays.values())
         arr_obj = arrays_list[0]
         arr = arr_obj.numpy()
         arr_list = arr.tolist()
-        with open("final_model_xgb5.json", "w") as f:
+        with open("final_model_xgb_global.json", "w") as f:
             json.dump(arr_list, f)

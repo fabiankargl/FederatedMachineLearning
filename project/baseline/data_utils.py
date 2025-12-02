@@ -83,3 +83,119 @@ def get_partitioned_data(
     y_train_client = y_train[client_idx]
 
     return X_train_client, X_test, y_train_client, y_test
+
+def get_country_partitioned_data(
+    partition_id: int,
+    num_partitions: int,
+    random_state: int = 123,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, str]:
+    """Non-IID: Ein Client = ein Land (native-country).
+
+    partition_id:   0 .. num_partitions-1
+    num_partitions: Anzahl Clients (z.B. 41)
+    random_state:   für Reproduzierbarkeit
+    """
+
+    # 1) Adult-Datensatz laden
+    print("--- Load Adult Dataset (country partition) ---")
+    adult = fetch_ucirepo(id=2)
+    X = adult.data.features.copy()
+    y = adult.data.targets.copy()
+
+    # 2) Target säubern (gleich wie in get_processed_data)
+    y["income"] = y["income"].astype(str).str.replace(".", "", regex=False)
+    y_bin = y["income"].apply(lambda x: 0 if "<=50K" in x else 1).values
+
+    # 3) native-country separat merken
+    countries = X["native-country"].astype(str).values
+
+    # 4) numeric / categorical features wie oben
+    numeric_features = [
+        "age",
+        "fnlwgt",
+        "education-num",
+        "capital-gain",
+        "capital-loss",
+        "hours-per-week",
+    ]
+    categorical_features = [
+        "workclass",
+        "education",
+        "marital-status",
+        "occupation",
+        "relationship",
+        "race",
+        "sex",
+        "native-country",
+    ]
+
+    # 5) Preprocessing-Pipeline wie in get_processed_data
+    preprocessor = ColumnTransformer(
+        transformers=[
+            (
+                "num",
+                Pipeline(
+                    steps=[
+                        ("imputer", SimpleImputer(strategy="median")),
+                        ("scaler", StandardScaler()),
+                    ]
+                ),
+                numeric_features,
+            ),
+            (
+                "cat",
+                Pipeline(
+                    steps=[
+                        ("imputer", SimpleImputer(strategy="most_frequent")),
+                        ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
+                    ]
+                ),
+                categorical_features,
+            ),
+        ]
+    )
+
+    print("--- Apply preprocessing (country partition) ---")
+    X_processed = preprocessor.fit_transform(X)
+
+    # 6) Train/Test-Split, countries mit rüberziehen
+    (
+        X_train,
+        X_test,
+        y_train,
+        y_test,
+        countries_train,
+        countries_test,
+    ) = train_test_split(
+        X_processed,
+        y_bin,
+        countries,
+        test_size=0.2,
+        random_state=42,
+        stratify=y_bin,
+    )
+
+    # 7) alle Länder im Train-Set sammeln
+    unique_countries = np.unique(countries_train)
+    unique_countries_sorted = np.sort(unique_countries)
+
+    if num_partitions > len(unique_countries_sorted):
+        raise ValueError(
+            f"num_partitions={num_partitions}, aber nur {len(unique_countries_sorted)} Länder im Datensatz"
+        )
+
+    # dieses Land gehört zu diesem Client
+    client_country = unique_countries_sorted[partition_id]
+
+    # Indizes für dieses Land
+    client_idx = np.where(countries_train == client_country)[0]
+
+    X_train_client = X_train[client_idx]
+    y_train_client = y_train[client_idx]
+
+    print(
+        f"[Partition] id={partition_id}, country={client_country}, n_train={len(y_train_client)}"
+    )
+
+    # Testset bleibt global
+    return X_train_client, X_test, y_train_client, y_test, client_country

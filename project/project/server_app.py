@@ -1,5 +1,3 @@
-"""xgboost_quickstart: A Flower / XGBoost app."""
-
 import numpy as np
 import csv
 import os
@@ -15,7 +13,7 @@ from project.task import replace_keys
 def log_round_metrics_to_csv(strategy_name: str, round_number: int, metrics: dict):
     """Append federated round metrics into a CSV file."""
     
-    filename = "federated_metrics15.csv"
+    filename = "test.csv"
     file_exists = os.path.isfile(filename)
 
     # CSV headers

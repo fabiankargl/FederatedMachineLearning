@@ -1,9 +1,5 @@
-"""xgboost_quickstart: A Flower / XGBoost app."""
-
 import xgboost as xgb
-from flwr_datasets import FederatedDataset
-from flwr_datasets.partitioner import IidPartitioner
-from baseline.data_utils import get_partitioned_data_cached
+from baseline.data_utils import get_partitioned_data_cached, get_country_partitioned_data
 
 
 def train_test_split(partition, test_fraction, seed):
@@ -29,12 +25,19 @@ def transform_dataset_to_dmatrix(data):
 fds = None  # Cache FederatedDataset
 
 
-def load_data(partition_id, num_clients):
-    X_train, X_test, y_train, y_test = get_partitioned_data_cached(
-        partition_id=partition_id,
-        num_partitions=num_clients,
-        random_state=123,
-    )
+def load_data(partition_id, num_clients, data_distribution="non-iid"):
+    if data_distribution == "iid":
+        # Hier die IID-Daten laden
+        X_train, X_test, y_train, y_test, _ = get_partitioned_data_cached(
+            partition_id=partition_id,
+            num_partitions=num_clients,
+        )
+    else:
+        # Non-IID: z.B. nach Ländern partitioniert
+        X_train, X_test, y_train, y_test, _ = get_country_partitioned_data(
+            partition_id=partition_id,
+            num_partitions=num_clients,
+        )
 
     # 2) In DMatrix konvertieren
     train_dmatrix = xgb.DMatrix(X_train, label=y_train)

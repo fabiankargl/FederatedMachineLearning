@@ -39,24 +39,26 @@ clientapp = "project.client_app:app"
 
 # Custom config values accessible via `context.run_config`
 [tool.flwr.app.config]
-num-server-rounds = 5
-fraction-train = 0.9
-local-epochs = 5
+num-server-rounds = 10
+fraction-train = 0.6
+local-epochs = 10
 lr = 0.005
 batch-size = 64
 input_dim = 108
 weighted = true
-mode = "iid"
-fraction-evaluate = 0.9
+fraction-evaluate = 0.6
 strategy = "bagging" 
+data-distribution = "non-iid" 
 
 params.objective = "binary:logistic"
-params.eta = 0.1 # Learning rate
-params.max-depth = 8
+params.eta = 0.05 
+params.max-depth = 6
 params.eval-metric = "auc"
 params.nthread = 16
-params.num-parallel-tree = 1
-params.subsample = 1
+params.colsample_bytree = 0.7
+params.num_parallel_tree = 2
+params.subsample = 0.9
+params.scale_pos_weight = 3
 params.tree-method = "hist"
 
 # Default federation to use when running the app
@@ -65,7 +67,7 @@ default = "local-simulation"
 
 # Local simulation federation with 5 virtual SuperNodes
 [tool.flwr.federations.local-simulation]
-options.num-supernodes = 15
+options.num-supernodes = 5
 
 # Remote federation example for use with SuperLink
 [tool.flwr.federations.remote-federation]

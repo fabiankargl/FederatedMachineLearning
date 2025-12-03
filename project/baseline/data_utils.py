@@ -221,61 +221,29 @@ def get_partitioned_data_cached(
     partition_id: int, 
     num_partitions: int, 
     random_state: int = 123,
-    partition_test: bool = True  # NEU: Option zum Partitionieren des Test-Sets
+    partition_test: bool = False  # jetzt False: alle Clients teilen sich das Testset
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """
-    IID Partitionierung der Daten für Federated Learning.
     
-    Args:
-        partition_id: Client ID (0 bis num_partitions-1)
-        num_partitions: Anzahl der Clients
-        random_state: Seed für Reproduzierbarkeit
-        partition_test: Wenn True, wird auch das Test-Set partitioniert
-    
-    Returns:
-        (X_train_client, X_test_client, y_train_client, y_test_client)
-    """
     key = (partition_id, num_partitions, random_state, partition_test)
-
-    # Cache-Check
     if key in _CACHE["partitions"]:
         return _CACHE["partitions"][key]
 
-    # Globale Daten laden
     X_train, X_test, y_train, y_test = get_processed_data_cached()
 
     rng = np.random.RandomState(random_state)
     
-    # ============= TRAIN-SET PARTITIONIERUNG =============
+    # Train-Partitionierung wie gehabt
     train_indices = np.arange(X_train.shape[0])
     rng.shuffle(train_indices)
     train_splits = np.array_split(train_indices, num_partitions)
     client_train_idx = train_splits[partition_id]
-    
     X_train_client = X_train[client_train_idx]
     y_train_client = y_train[client_train_idx]
-    
-    # ============= TEST-SET PARTITIONIERUNG (OPTIONAL) =============
-    if partition_test:
-        # Auch Test-Set partitionieren für fairere lokale Evaluation
-        test_indices = np.arange(X_test.shape[0])
-        rng.shuffle(test_indices)
-        test_splits = np.array_split(test_indices, num_partitions)
-        client_test_idx = test_splits[partition_id]
-        
-        X_test_client = X_test[client_test_idx]
-        y_test_client = y_test[client_test_idx]
-        
-        print(f"[Partition {partition_id}] "
-              f"Train: {len(y_train_client)} samples, "
-              f"Test: {len(y_test_client)} samples, "
-              f"Class balance (train): {np.mean(y_train_client):.2%} positive")
-    else:
-        # Alle Clients verwenden das gleiche Test-Set (alte Methode)
-        X_test_client = X_test
-        y_test_client = y_test
-    
-    # Cache speichern
+
+    # Testset global für alle Clients
+    X_test_client = X_test
+    y_test_client = y_test
+
     result = (X_train_client, X_test_client, y_train_client, y_test_client)
     _CACHE["partitions"][key] = result
     return result

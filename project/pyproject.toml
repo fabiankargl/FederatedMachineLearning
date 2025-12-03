@@ -48,7 +48,8 @@ input_dim = 108
 weighted = true
 fraction-evaluate = 0.6
 strategy = "bagging" 
-data-distribution = "non-iid" 
+data-distribution = "iid" 
+num-supernodes = 5 
 
 params.objective = "binary:logistic"
 params.eta = 0.05 

@@ -28,7 +28,7 @@ fds = None  # Cache FederatedDataset
 def load_data(partition_id, num_clients, data_distribution="non-iid"):
     if data_distribution == "iid":
         # Hier die IID-Daten laden
-        X_train, X_test, y_train, y_test, _ = get_partitioned_data_cached(
+        X_train, X_test, y_train, y_test = get_partitioned_data_cached(
             partition_id=partition_id,
             num_partitions=num_clients,
         )

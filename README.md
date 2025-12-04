@@ -68,7 +68,7 @@ Project configuration and dependencies.
 Git ignore rules for the project.
 
 ### `exploration_images/`
-Contains plots of the data analysis
+Contains plots of the data analysis.
 
 ### `results_presentation/`
 Contains results initially used for the presentation.

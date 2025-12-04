@@ -67,10 +67,10 @@ Project configuration and dependencies.
 ### `.gitignore`
 Git ignore rules for the project.
 
-### exploration_images/
+### `exploration_images/`
 Contains plots of the data analysis
 
-### results_presentation/
+### `results_presentation/`
 Contains results initially used for the presentation.
 
 ---

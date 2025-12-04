@@ -10,7 +10,7 @@ The project is structured to separate core code (client/server/task) from result
 
 ## Repository Structure
 
-### `project/`
+### `project/project/`
 Contains the main source code of the project, including:
 - **Client implementation**
 - **Server implementation**
@@ -22,7 +22,7 @@ This folder holds the actual runnable code for centralized and federated experim
 
 ## Baselines
 
-### `baseline/`
+### `project/baseline/`
 Contains the **centralized baseline experiments**, including:
 - Data analysis  
 - Central model training  
@@ -33,7 +33,7 @@ This serves as the reference performance for all FL experiments.
 
 ---
 
-### `baseline_federated/`
+### `project/baseline_federated/`
 Contains the **federated baseline experiments** using the best settings from the experiments.
 
 Includes experiments with:
@@ -47,7 +47,7 @@ Each experiment folder stores results.
 
 ## Experiments
 
-### `experiment/`
+### `project/experiment/`
 Contains results from additional experiments, such as:
 - different values for **learning rate**, **local-epochs**, **number of trees**
 - comparing 2 different strategies
@@ -58,10 +58,10 @@ This folder is intended for exploratory and extended experiments beyond the base
 
 ## Additional Files
 
-### `final_model.json`
+### `project/final_model.json`
 Serialized model or configuration saved after finishing all experiments.
 
-### `pyproject.toml`
+### `project/pyproject.toml`
 Project configuration and dependencies.
 
 ### `.gitignore`

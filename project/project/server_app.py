@@ -50,11 +50,15 @@ def main(grid: Grid, context: Context) -> None:
     strategy_name = context.run_config["strategy"]
     data_distribution = context.run_config["data-distribution"]
     num_supernodes = context.run_config["num-supernodes"]
+    local_epochs = context.run_config.get("local-epochs", "unknown")
 
     cfg = replace_keys(unflatten_dict(context.run_config))
     params = cfg["params"]
-
-    csv_filename = f"federated_metrics_{strategy_name}_{num_supernodes}_{data_distribution}.csv"
+    eta = cfg["params"]["eta"]
+    total_trees = num_supernodes * local_epochs * num_rounds
+    output_dir = "experiment/global"
+    os.makedirs(output_dir, exist_ok=True)
+    csv_filename = f"{output_dir}/global_{strategy_name}_{num_supernodes}_{data_distribution}_eta_{eta}_le_{local_epochs}_total_{total_trees}.csv"
 
     # Init global model
     # Init with an empty object; the XGBooster will be created

@@ -120,12 +120,16 @@ def evaluate(msg: Message, context: Context) -> Message:
     # Run config
     cfg = replace_keys(unflatten_dict(context.run_config))
     params = cfg["params"]
+    eta = cfg["params"]["eta"]
     data_distribution = cfg.get("data_distribution", "non-iid")
 
     # Strategie / Meta für Dateinamen
     strategy_name = context.run_config.get("strategy", "unknown")
     num_supernodes = context.run_config.get("num-supernodes", "unknown")
     server_round = msg.content["config"]["server-round"]
+    local_epochs = context.run_config.get("local-epochs", "unknown")
+    num_server_rounds = context.run_config.get("num-server-rounds", 10)
+    total_trees = num_supernodes * local_epochs * num_server_rounds
 
     # Load partitioned data according to IID or Non-IID
     _, valid_dmatrix, _, num_val = load_data(
@@ -159,9 +163,10 @@ def evaluate(msg: Message, context: Context) -> Message:
     }
 
     # -> Lokale Client-Metriken in zusätzliche CSV schreiben
+    output_dir = "experiment/client"
+    os.makedirs(output_dir, exist_ok=True)
     client_csv_filename = (
-        f"client_metrics_{strategy_name}_{num_supernodes}_{data_distribution}.csv"
-    )
+    f"{output_dir}/client_{strategy_name}_{num_supernodes}_{data_distribution}_eta_{eta}_le_{local_epochs}_total_{total_trees}.csv")
     client_id = f"client_{partition_id}"
 
     log_client_metrics_to_csv(

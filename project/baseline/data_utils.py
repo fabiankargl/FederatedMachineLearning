@@ -221,7 +221,7 @@ def get_partitioned_data_cached(
     partition_id: int, 
     num_partitions: int, 
     random_state: int = 123,
-    partition_test: bool = False  # jetzt False: alle Clients teilen sich das Testset
+    partition_test: bool = False  
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     
     key = (partition_id, num_partitions, random_state, partition_test)
@@ -232,17 +232,29 @@ def get_partitioned_data_cached(
 
     rng = np.random.RandomState(random_state)
     
-    # Train-Partitionierung wie gehabt
+    # --- 1. Train Partitionierung (bleibt gleich) ---
     train_indices = np.arange(X_train.shape[0])
     rng.shuffle(train_indices)
     train_splits = np.array_split(train_indices, num_partitions)
+    
     client_train_idx = train_splits[partition_id]
     X_train_client = X_train[client_train_idx]
     y_train_client = y_train[client_train_idx]
 
-    # Testset global für alle Clients
-    X_test_client = X_test
-    y_test_client = y_test
+    # --- 2. Test Partitionierung (NEU) ---
+    if partition_test:
+        # Auch das Test-Set wird gemischt und aufgeteilt
+        test_indices = np.arange(X_test.shape[0])
+        rng.shuffle(test_indices)
+        test_splits = np.array_split(test_indices, num_partitions)
+        
+        client_test_idx = test_splits[partition_id]
+        X_test_client = X_test[client_test_idx]
+        y_test_client = y_test[client_test_idx]
+    else:
+        # Originalverhalten: Globales Test-Set für alle
+        X_test_client = X_test
+        y_test_client = y_test
 
     result = (X_train_client, X_test_client, y_train_client, y_test_client)
     _CACHE["partitions"][key] = result

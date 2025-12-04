@@ -47,12 +47,12 @@ batch-size = 64
 input_dim = 108
 weighted = true
 fraction-evaluate = 0.6
-strategy = "bagging" 
-data-distribution = "iid" 
-num-supernodes = 5 
+strategy = "bagging" # bagging | cyclic
+data-distribution = "iid" # iid | non-iid
+num-supernodes = 5
 
 params.objective = "binary:logistic"
-params.eta = 0.05 
+params.eta = 0.05
 params.max-depth = 6
 params.eval-metric = "auc"
 params.nthread = 16

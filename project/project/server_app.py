@@ -6,13 +6,14 @@ import xgboost as xgb
 from flwr.app import ArrayRecord, Context
 from flwr.common.config import unflatten_dict
 from flwr.serverapp import Grid, ServerApp
-from flwr.serverapp.strategy import FedXgbBagging
+from flwr.serverapp.strategy import FedXgbBagging, FedXgbCyclic
 
 from project.task import replace_keys
 
+
 def log_round_metrics_to_csv(filename: str, strategy_name: str, round_number: int, metrics: dict):
     """Append federated round metrics into a CSV file."""
-    
+
     file_exists = os.path.isfile(filename)
 
     headers = ["timestamp", "strategy", "round", "metric", "value"]
@@ -35,22 +36,24 @@ def log_round_metrics_to_csv(filename: str, strategy_name: str, round_number: in
                 value,
             ])
 
+
 # Create ServerApp
 app = ServerApp()
+
 
 @app.main()
 def main(grid: Grid, context: Context) -> None:
     # Read run config
     num_rounds = context.run_config["num-server-rounds"]
-    fraction_train = context.run_config["fraction-train"]
+    fraction_train_cfg = context.run_config["fraction-train"]
     fraction_evaluate = context.run_config["fraction-evaluate"]
     strategy_name = context.run_config["strategy"]
     data_distribution = context.run_config["data-distribution"]
     num_supernodes = context.run_config["num-supernodes"]
-    
+
     cfg = replace_keys(unflatten_dict(context.run_config))
     params = cfg["params"]
-    
+
     csv_filename = f"federated_metrics_{strategy_name}_{num_supernodes}_{data_distribution}.csv"
 
     # Init global model
@@ -59,18 +62,30 @@ def main(grid: Grid, context: Context) -> None:
     global_model = b""
     arrays = ArrayRecord([np.frombuffer(global_model, dtype=np.uint8)])
 
-    # Initialize FedXgbBagging strategy
-    strategy = FedXgbBagging(
-        fraction_train=fraction_train,
-        fraction_evaluate=fraction_evaluate,
-    )
+    # Initialize selected XGBoost strategy
+    if strategy_name == "bagging":
+        strategy = FedXgbBagging(
+            fraction_train=fraction_train_cfg,
+            fraction_evaluate=fraction_evaluate,
+        )
+    elif strategy_name == "cyclic":
+        # FedXgbCyclic erlaubt nur 0.0 oder 1.0 -> wir erzwingen 1.0
+        strategy = FedXgbCyclic(
+            fraction_train=1.0,
+            fraction_evaluate=1.0,
+        )
+    else:
+        raise ValueError(
+            f"Unknown XGBoost strategy '{strategy_name}'. "
+            "Use 'bagging' or 'cyclic'."
+        )
 
     result = strategy.start(
         grid=grid,
         initial_arrays=arrays,
         num_rounds=num_rounds,
     )
-    
+
     print("\nWriting metrics to CSV...")
 
     for rnd, metrics in result.evaluate_metrics_clientapp.items():

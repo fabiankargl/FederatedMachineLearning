@@ -1,8 +1,12 @@
 import warnings
 import numpy as np
+import csv
+import os
+from datetime import datetime
 from sklearn.metrics import f1_score
 import xgboost as xgb
-from flwr.app import ArrayRecord, Context, Message, MetricRecord, RecordDict
+
+from flwr.app import Message, Context, ArrayRecord, MetricRecord, RecordDict
 from flwr.clientapp import ClientApp
 from flwr.common.config import unflatten_dict
 
@@ -10,8 +14,39 @@ from project.task import load_data, replace_keys
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
-# Flower ClientApp
 app = ClientApp()
+
+
+def log_client_metrics_to_csv(
+    filename: str,
+    strategy_name: str,
+    round_number: int,
+    client_id,
+    metrics: dict,
+):
+    """Lokale Client-Metriken in CSV schreiben."""
+    file_exists = os.path.isfile(filename)
+
+    headers = ["timestamp", "strategy", "round", "client_id", "metric", "value"]
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    with open(filename, "a", newline="") as f:
+        writer = csv.writer(f)
+
+        if not file_exists:
+            writer.writerow(headers)
+
+        for key, value in metrics.items():
+            writer.writerow(
+                [
+                    timestamp,
+                    strategy_name,
+                    round_number,
+                    client_id,
+                    key,
+                    value,
+                ]
+            )
 
 
 def _local_boost(bst_input, num_local_round, train_dmatrix):
@@ -87,6 +122,11 @@ def evaluate(msg: Message, context: Context) -> Message:
     params = cfg["params"]
     data_distribution = cfg.get("data_distribution", "non-iid")
 
+    # Strategie / Meta für Dateinamen
+    strategy_name = context.run_config.get("strategy", "unknown")
+    num_supernodes = context.run_config.get("num-supernodes", "unknown")
+    server_round = msg.content["config"]["server-round"]
+
     # Load partitioned data according to IID or Non-IID
     _, valid_dmatrix, _, num_val = load_data(
         partition_id, num_partitions, data_distribution
@@ -111,12 +151,28 @@ def evaluate(msg: Message, context: Context) -> Message:
     y_pred = (y_prob >= optimal_threshold).astype(int)
     f1 = f1_score(y_true, y_pred)
 
-    # Prepare reply message
+    # Metriken als dict
     metrics = {
         "auc": auc,
         "f1": f1,
         "num-examples": num_val,
     }
+
+    # -> Lokale Client-Metriken in zusätzliche CSV schreiben
+    client_csv_filename = (
+        f"client_metrics_{strategy_name}_{num_supernodes}_{data_distribution}.csv"
+    )
+    client_id = f"client_{partition_id}"
+
+    log_client_metrics_to_csv(
+        filename=client_csv_filename,
+        strategy_name=strategy_name,
+        round_number=server_round,
+        client_id=client_id,
+        metrics=metrics,
+    )
+
+    # Prepare reply message (wie bisher)
     metric_record = MetricRecord(metrics)
     content = RecordDict({"metrics": metric_record})
 

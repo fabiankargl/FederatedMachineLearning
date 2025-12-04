@@ -84,9 +84,9 @@ def main():
     auc_order = get_sorted_order(all_data, 'auc')
     f1_order = get_sorted_order(all_data, 'f1')
 
-    create_plot('auc', None, "client_auc_global_cyclic.png", "Average (Cyclic)", auc_order, all_data, script_dir)
+    create_plot('auc', None, "client_auc_cyclic_iid.png", "Average (Cyclic - IID)", auc_order, all_data, script_dir)
 
-    create_plot('f1', None, "client_f1_global_cyclic.png", "Average (Cyclic)", f1_order, all_data, script_dir)
+    create_plot('f1', None, "client_f1_cyclic_iid.png", "Average (Cyclic - IID)", f1_order, all_data, script_dir)
 
     print("All plots have been created.")
 

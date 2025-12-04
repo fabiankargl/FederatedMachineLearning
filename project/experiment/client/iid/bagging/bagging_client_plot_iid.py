@@ -84,9 +84,9 @@ def main():
     auc_order = get_sorted_order(all_data, 'auc')
     f1_order = get_sorted_order(all_data, 'f1')
 
-    create_plot('auc', None, "client_auc_global_bagging.png", "Average (Bagging)", auc_order, all_data, script_dir)
+    create_plot('auc', None, "client_auc_bagging_iid.png", "Average (Bagging - IID)", auc_order, all_data, script_dir)
 
-    create_plot('f1', None, "client_f1_global_bagging.png", "Average (Bagging)", f1_order, all_data, script_dir)
+    create_plot('f1', None, "client_f1_bagging_iid.png", "Average (Bagging - IID)", f1_order, all_data, script_dir)
 
     print("All plots have been created.")
 

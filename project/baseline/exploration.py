@@ -3,6 +3,33 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 from ucimlrepo import fetch_ucirepo
+from typing import Tuple, List, Any
+
+def plot_categorical_relation(
+    column: str, 
+    df_data: pd.DataFrame, 
+    rotation: int = 45
+) -> None:
+    """
+    Generates a count plot showing the distribution of the target variable ('income') 
+    across categories of a specified feature column.
+
+    Args:
+        column (str): The name of the categorical column in df_data to plot on the x-axis.
+        df_data (pd.DataFrame): The DataFrame containing the data, including the 'income' target column.
+        rotation (int, optional): The rotation angle for the x-axis labels. Defaults to 45.
+    """
+    plt.figure(figsize=(12, 6))
+    # Order categories by their total count
+    order = df_data[column].value_counts().index
+    sns.countplot(x=column, hue='income', data=df_data, order=order, palette='Paired')
+    
+    plt.title(f'Income distribution by "{column}"')
+    plt.xticks(rotation=rotation)
+    plt.legend(title='Income', loc='upper right')
+    plt.xlabel(column.replace('-', ' ').capitalize()) 
+    plt.tight_layout()
+    plt.show()
 
 print("--- Load Data... ---")
 adult = fetch_ucirepo(id=2) 
@@ -43,17 +70,6 @@ sns.boxplot(x='income', y='hours-per-week', data=df, hue='income', palette='Set2
 plt.title('Working hours per week vs. income')
 plt.tight_layout()
 plt.show()
-
-def plot_categorical_relation(column, df_data, rotation=45):
-    plt.figure(figsize=(12, 6))
-    order = df_data[column].value_counts().index
-    sns.countplot(x=column, hue='income', data=df_data, order=order, palette='Paired')
-    plt.title(f'Income distribution by "{column}"')
-    plt.xticks(rotation=rotation)
-    plt.legend(title='Income', loc='upper right')
-    plt.xlabel(column.replace('-', ' ').capitalize())
-    plt.tight_layout()
-    plt.show()
 
 plot_categorical_relation('education', df)
 

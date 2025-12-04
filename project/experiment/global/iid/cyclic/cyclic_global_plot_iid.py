@@ -70,12 +70,12 @@ def main():
         marker="o",
         palette="tab10"
     )
-    plt.title('AUC per Round - Bagging', fontsize=16)
+    plt.title('AUC per Round - Cyclic (IID)', fontsize=16)
     plt.xlabel("Round", fontsize=12)
     plt.ylabel("AUC", fontsize=12)
     plt.legend(title="Configuration", bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
-    plt.savefig(os.path.join(script_dir, "auc_plot_global_bagging.png"), dpi=300)
+    plt.savefig(os.path.join(script_dir, "auc_plot_global_cyclic_iid.png"), dpi=300)
     
     f1_order = get_sorted_order(all_data, 'f1')
 
@@ -88,12 +88,12 @@ def main():
         marker="o",
         palette="tab10"
     )
-    plt.title('F1 Score per Round - Bagging', fontsize=16)
+    plt.title('F1 Score per Round - Cyclic (IID)', fontsize=16)
     plt.xlabel("Runde", fontsize=12)
     plt.ylabel("F1 Score", fontsize=12)
     plt.legend(title="Configuration", bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
-    plt.savefig(os.path.join(script_dir, "f1_plot_global_bagging.png"), dpi=300)
+    plt.savefig(os.path.join(script_dir, "f1_plot_global_cyclic_iid.png"), dpi=300)
 
     print(f"Done! Sorted plots have been placed in the folder '{script_dir}'.")
 

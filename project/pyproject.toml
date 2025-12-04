@@ -44,7 +44,7 @@ local-epochs = 10
 fraction-train = 0.6
 fraction-evaluate = 0.6
 strategy = "bagging" # bagging | cyclic
-data-distribution = "non-iid" # iid | non-iid
+data-distribution = "iid" # iid | non-iid
 num-supernodes = 41
 
 # XGBoost parameter

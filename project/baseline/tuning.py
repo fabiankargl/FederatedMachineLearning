@@ -2,7 +2,7 @@ import pandas as pd
 import xgboost as xgb
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
-from data_utils import get_processed_data
+from baseline.data_utils import get_processed_data
 from typing import Dict, Any, List
 
 param_dist_xgb: Dict[str, List[Any]] = {

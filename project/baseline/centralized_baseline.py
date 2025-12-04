@@ -1,6 +1,6 @@
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
-from data_utils import get_processed_data
-from model_utils import train_xgboost, train_random_forest, train_neural_network
+from baseline.data_utils import get_processed_data
+from baseline.model_utils import train_xgboost, train_random_forest, train_neural_network
 
 if __name__ == "__main__":
     X_train, X_test, y_train, y_test = get_processed_data()

@@ -7,6 +7,12 @@ from ucimlrepo import fetch_ucirepo
 import numpy as np
 from typing import Tuple
 
+# global Cache
+_CACHE = {
+    "processed": None,
+    "partitions": {}
+}
+
 def get_processed_data() -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Loads the UCI Adult dataset, preprocesses it, and splits it into training and testing sets.
@@ -53,63 +59,120 @@ def get_processed_data() -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray
     
     return train_test_split(X_processed, y_bin, test_size=0.2, random_state=42, stratify=y_bin)
 
-def get_partitioned_data(
-    partition_id: int,
-    num_partitions: int,
-    random_state: int = 123,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Gibt nur den Teil der Daten für einen Client zurück.
-
-    partition_id:   welche Partition (0 .. num_partitions-1)
-    num_partitions: wie viele Clients insgesamt
-    random_state:   sorgt dafür, dass der Split reproduzierbar ist
+def get_processed_data_cached() -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
+    Caches the result of data loading and preprocessing.
 
-    # 1) globalen Datensatz laden (einmalige Preprocessing-Logik wiederverwenden)
+    Returns:
+        Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]: The cached data tuple:
+        (X_train, X_test, y_train, y_test).
+    """
+    if _CACHE["processed"] is not None:
+        # Data is already in cache, return immediately
+        return _CACHE["processed"]
+
+    # Execute the original data loading and processing function
     X_train, X_test, y_train, y_test = get_processed_data()
 
-    # 2) Indizes des Train-Sets mischen, aber deterministisch
+    # Store the result in the cache
+    _CACHE["processed"] = (X_train, X_test, y_train, y_test)
+    return _CACHE["processed"]
+
+def get_partitioned_data_cached(
+    partition_id: int, 
+    num_partitions: int, 
+    random_state: int = 123,
+    partition_test: bool = False 
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Retrieves or generates the IID-partitioned data subset for a client, using caching.
+
+    Args:
+        partition_id (int): The index of the client/partition (0 to num_partitions - 1).
+        num_partitions (int): The total number of clients/partitions.
+        random_state (int, optional): Seed used for the deterministic shuffling and 
+            splitting of both the train and optional test indices. Defaults to 123.
+        partition_test (bool, optional): If True, the global test set is also 
+            partitioned and the client receives only a subset (Local Evaluation). 
+            If False, the client receives the entire global test set. Defaults to False.
+
+    Returns:
+        Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]: The cached/partitioned data:
+        (X_train_client, X_test_client, y_train_client, y_test_client).
+    """
+    
+    # Generate unique key for the cache based on all partitioning parameters
+    key = (partition_id, num_partitions, random_state, partition_test)
+    if key in _CACHE["partitions"]:
+        # Cache hit: return the previously computed partition immediately
+        return _CACHE["partitions"][key]
+
+    # Cache miss: load the globally processed data
+    X_train, X_test, y_train, y_test = get_processed_data_cached()
+
     rng = np.random.RandomState(random_state)
-    indices = np.arange(X_train.shape[0])
-    rng.shuffle(indices)
+    
+    # Train Partitioning (IID)
+    train_indices = np.arange(X_train.shape[0])
+    rng.shuffle(train_indices) # Shuffle deterministically
+    train_splits = np.array_split(train_indices, num_partitions) # Split into N parts
+    
+    client_train_idx = train_splits[partition_id]
+    X_train_client = X_train[client_train_idx]
+    y_train_client = y_train[client_train_idx]
 
-    # 3) Indizes in num_partitions ungefährt gleich große Blöcke teilen
-    splits = np.array_split(indices, num_partitions)
+    # Test Partitioning
+    if partition_test:
+        # Partition the Test Set (Local Evaluation)
+        test_indices = np.arange(X_test.shape[0])
+        rng.shuffle(test_indices)
+        test_splits = np.array_split(test_indices, num_partitions)
+        
+        client_test_idx = test_splits[partition_id]
+        X_test_client = X_test[client_test_idx]
+        y_test_client = y_test[client_test_idx]
+    else:
+        # Default behavior: Global Test Set for all clients (Global Evaluation)
+        X_test_client = X_test
+        y_test_client = y_test
 
-    # 4) Indizes für diesen Client
-    client_idx = splits[partition_id]
-
-    X_train_client = X_train[client_idx]
-    y_train_client = y_train[client_idx]
-
-    return X_train_client, X_test, y_train_client, y_test
+    # Store result in partition cache and return
+    result = (X_train_client, X_test_client, y_train_client, y_test_client)
+    _CACHE["partitions"][key] = result
+    return result
 
 def get_country_partitioned_data(
     partition_id: int,
     num_partitions: int,
-    random_state: int = 123,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, str]:
-    """Non-IID: Ein Client = ein Land (native-country).
+    """
+    Partitions the training dataset in a Non-IID manner where each client is 
+    assigned all training examples belonging to a single 'native-country'.
 
-    partition_id:   0 .. num_partitions-1
-    num_partitions: Anzahl Clients (z.B. 41)
-    random_state:   für Reproduzierbarkeit
+    Args:
+        partition_id (int): The index of the partition/client (0 to num_partitions - 1). 
+            This index corresponds to a specific country in the sorted list.
+        num_partitions (int): The total number of clients/partitions.
+
+    Returns:
+        Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, str]: A tuple containing the data:
+        (X_train_client, X_test_global, y_train_client, y_test_global, client_country_name).
     """
 
-    # 1) Adult-Datensatz laden
+    # Load the Adult dataset
     print("--- Load Adult Dataset (country partition) ---")
     adult = fetch_ucirepo(id=2)
     X = adult.data.features.copy()
     y = adult.data.targets.copy()
 
-    # 2) Target säubern (gleich wie in get_processed_data)
+    # Clean the target variable
     y["income"] = y["income"].astype(str).str.replace(".", "", regex=False)
     y_bin = y["income"].apply(lambda x: 0 if "<=50K" in x else 1).values
 
-    # 3) native-country separat merken
+    # Separate and store the native-country feature (crucial for partitioning)
     countries = X["native-country"].astype(str).values
 
-    # 4) numeric / categorical features wie oben
+    # Define numeric and categorical features (same as above)
     numeric_features = [
         "age",
         "fnlwgt",
@@ -129,7 +192,7 @@ def get_country_partitioned_data(
         "native-country",
     ]
 
-    # 5) Preprocessing-Pipeline wie in get_processed_data
+    # Preprocessing pipeline
     preprocessor = ColumnTransformer(
         transformers=[
             (
@@ -158,7 +221,7 @@ def get_country_partitioned_data(
     print("--- Apply preprocessing (country partition) ---")
     X_processed = preprocessor.fit_transform(X)
 
-    # 6) Train/Test-Split, countries mit rüberziehen
+    # Train/Test-Split, ensuring the 'countries' array is split along with X and y
     (
         X_train,
         X_test,
@@ -175,87 +238,23 @@ def get_country_partitioned_data(
         stratify=y_bin,
     )
 
-    # 7) alle Länder im Train-Set sammeln
+    # Gather all unique countries in the training set
     unique_countries = np.unique(countries_train)
     unique_countries_sorted = np.sort(unique_countries)
 
     if num_partitions > len(unique_countries_sorted):
         raise ValueError(
-            f"num_partitions={num_partitions}, aber nur {len(unique_countries_sorted)} Länder im Datensatz"
+            f"num_partitions={num_partitions} exceeds the number of unique countries available ({len(unique_countries_sorted)}) in the dataset."
         )
 
-    # dieses Land gehört zu diesem Client
+    # Determine which country belongs to this client based on partition_id
     client_country = unique_countries_sorted[partition_id]
 
-    # Indizes für dieses Land
+    # Find indices corresponding to this specific country
     client_idx = np.where(countries_train == client_country)[0]
 
+    # Assign client's training data
     X_train_client = X_train[client_idx]
     y_train_client = y_train[client_idx]
 
-    print(
-        f"[Partition] id={partition_id}, country={client_country}, n_train={len(y_train_client)}"
-    )
-
-    # Testset bleibt global
     return X_train_client, X_test, y_train_client, y_test, client_country
-
-_CACHE = {
-    "processed": None,
-    "partitions": {}
-}
-
-def get_processed_data_cached():
-    """Preprocessing wird nur 1× ausgeführt und dann gecached."""
-    if _CACHE["processed"] is not None:
-        return _CACHE["processed"]
-
-    # → Originalfunktion ausführen
-    X_train, X_test, y_train, y_test = get_processed_data()
-
-    # → in Cache speichern
-    _CACHE["processed"] = (X_train, X_test, y_train, y_test)
-    return _CACHE["processed"]
-
-def get_partitioned_data_cached(
-    partition_id: int, 
-    num_partitions: int, 
-    random_state: int = 123,
-    partition_test: bool = False  
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    
-    key = (partition_id, num_partitions, random_state, partition_test)
-    if key in _CACHE["partitions"]:
-        return _CACHE["partitions"][key]
-
-    X_train, X_test, y_train, y_test = get_processed_data_cached()
-
-    rng = np.random.RandomState(random_state)
-    
-    # --- 1. Train Partitionierung (bleibt gleich) ---
-    train_indices = np.arange(X_train.shape[0])
-    rng.shuffle(train_indices)
-    train_splits = np.array_split(train_indices, num_partitions)
-    
-    client_train_idx = train_splits[partition_id]
-    X_train_client = X_train[client_train_idx]
-    y_train_client = y_train[client_train_idx]
-
-    # --- 2. Test Partitionierung (NEU) ---
-    if partition_test:
-        # Auch das Test-Set wird gemischt und aufgeteilt
-        test_indices = np.arange(X_test.shape[0])
-        rng.shuffle(test_indices)
-        test_splits = np.array_split(test_indices, num_partitions)
-        
-        client_test_idx = test_splits[partition_id]
-        X_test_client = X_test[client_test_idx]
-        y_test_client = y_test[client_test_idx]
-    else:
-        # Originalverhalten: Globales Test-Set für alle
-        X_test_client = X_test
-        y_test_client = y_test
-
-    result = (X_train_client, X_test_client, y_train_client, y_test_client)
-    _CACHE["partitions"][key] = result
-    return result
